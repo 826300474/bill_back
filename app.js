@@ -3,18 +3,21 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+const bodyParser = require('body-parser')
 
 var indexRouter = require('./routes/index');
 
 var app = express();
 
+app.use(bodyParser.urlencoded({ extended: false }))
+// parse application/json
+app.use(bodyParser.json())
+
 app.all("*",function(req,res,next){
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "X-Requested-With");
-  res.header("Access-Control-Allow-Methods","PUT,POST,GET,DELETE,OPTIONS");
-  res.header("X-Powered-By",' 3.2.1')
-  res.header("Content-Type", "application/json;charset=utf-8");
-  res.header("Cache-Control", "no-store");
+  res.header('Access-Control-Allow-Origin', '*');//的允许所有域名的端口请求（跨域解决）
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Methods', '*');
+  res.header('Content-Type', 'application/json;charset=utf-8');
   next();
 });
 
@@ -29,7 +32,6 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api/index', indexRouter);
-app.use('/api/interface', indexRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

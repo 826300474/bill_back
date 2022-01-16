@@ -4,98 +4,55 @@ var dbConfig = require('../db.config');
 const MYSQL = require('mysql')
 var Mysql = require('node-mysql-promise');
 var mysql = Mysql.createConnection(dbConfig);
+var fs = require('fs');
 
 router.get('/', function (req, res, next) {
-    mysql.table('page').where(`url = '${req.query.href}'`).select().then(function (result) {
-        if( result && result.length > 0 ){
-            const page = result[0];
-            mysql.table('interfce').where(`pageId = '${page.key}'`).select().then(data => {
-                res.json(
-                    {
-                        success: true,
-                        data:data,
-                        message: '查询成功'
-                    }
-                );
-            }).catch(e => {
-                console.log(e);
-                res.json(
-                    {
-                        success: true,
-                        data:null,
-                        message: e
-                    }
-                );
-            })
+
+    fs.readFile('./routes/data.json',function(err,data){
+        if(err){
+            return console.error(err);
         }
-    }).catch(function (e) {
-        console.log(e);
+        var person = data.toString();//将二进制的数据转换为字符串
+        person = JSON.parse(person);//将字符串转换为json对象
         res.json(
             {
                 success: true,
-                data:null,
-                message: e
+                data:person.filter(el => !el.isDelete),
+                message: '查询成功'
             }
         );
-    });
+    })
 });
 
 router.post('/', function (req, res, next) {
-    const list = JSON.parse(req.body.data);
+    const record = req.body;
 
-    list.forEach(item => {
-        const tableName = item.pageData.tableName;
-        if(tableName){
-            const values = {
-                method:item.method,
-                url:item.url,
-                params:item.params,
-                content:item.content,
-                other_params:item.other_params
-            }
-            mysql.query(`select * from information_schema.tables where table_name ='${tableName}'`).then(function (result) {
-                if( result && result.length > 0 ){
-                    createRecord(values,req, res, next,tableName);
-                }else{
-                    const conn = MYSQL.createConnection(dbConfig);
-                    conn.connect();
-                    conn.query("CREATE TABLE "+ tableName +" (`method` varchar(255) DEFAULT NULL,`url` varchar(255) DEFAULT NULL,`params` varchar(255) DEFAULT NULL,`content` longtext,`other_params` varchar(255) DEFAULT NULL,`key` int(255) NOT NULL AUTO_INCREMENT,`create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,PRIMARY KEY (`key`)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8",
-                        function(err,result){
-                            if( err ){
-
-                            }else{
-                                createRecord(values,req, res, next,tableName);
-                            }
-                    })
-                }
-            })
+    fs.readFile('./routes/data.json',function(err,data){
+        if(err){
+            return console.error(err);
         }
-    });
-});
+        var person = data.toString();//将二进制的数据转换为字符串
+        person = JSON.parse(person);//将字符串转换为json对象
+        person.push({
+            ...record,
+            id:person.length + 1,
+            isDelete:false
+        });
 
-function createRecord(values,req, res, next,tableName){
-    var where = {
-        params:values.params,
-        content:values.content,
-        other_params:values.other_params
-    }
-    mysql.table(tableName).thenAdd(values,where).then(function (insertId) {
-        res.json(
-            {
-                success: true,
-                data:insertId,
-                message: '添加成功'
+        fs.writeFile('./routes/data.json',JSON.stringify(person),function(err){
+            if(err){
+                console.error(err);
             }
-        );
-    }).catch(function (err) {
-        console.log(err);
             res.json(
                 {
-                    success: false,
+                    success: true,
                     data:null,
-                    message: err
+                    message: '添加成功',
                 }
             );
+        })
     })
-}
+    
+});
+
 module.exports = router;
